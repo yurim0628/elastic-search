@@ -1,0 +1,85 @@
+version: '2.2'
+services:
+  elasticsearch_01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.2
+    container_name: elasticsearch_01
+    environment:
+      - node.name=elasticsearch_01
+      - cluster.name=elasticsearch_docker_cluster
+      - discovery.seed_hosts=elasticsearch_02,elasticsearch_03
+      - cluster.initial_master_nodes=elasticsearch_01,elasticsearch_02,elasticsearch_03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data_01:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - elastic
+
+  elasticsearch_02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.2
+    container_name: elasticsearch_02
+    environment:
+      - node.name=elasticsearch_02
+      - cluster.name=elasticsearch_docker_cluster
+      - discovery.seed_hosts=elasticsearch_01,elasticsearch_03
+      - cluster.initial_master_nodes=elasticsearch_01,elasticsearch_02,elasticsearch_03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data_02:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+
+  elasticsearch_03:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.2
+    container_name: elasticsearch_03
+    environment:
+      - node.name=elasticsearch_03
+      - cluster.name=elasticsearch_docker_cluster
+      - discovery.seed_hosts=elasticsearch_01,elasticsearch_02
+      - cluster.initial_master_nodes=elasticsearch_01,elasticsearch_02,elasticsearch_03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data_03:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.15.2
+    container_name: kibana
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch_01:9200
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch_01:9200","http://elasticsearch_02:9200","http://elasticsearch_03:9200"]'
+    networks:
+      - elastic
+
+volumes:
+  elasticsearch_data_01:
+    driver: local
+  elasticsearch_data_02:
+    driver: local
+  elasticsearch_data_03:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"

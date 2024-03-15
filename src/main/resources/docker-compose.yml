@@ -1,7 +1,10 @@
 version: '2.2'
 services:
   elasticsearch_01:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.2
+    build:
+      context: .
+      args:
+        VERSION: 7.15.2
     container_name: elasticsearch_01
     environment:
       - node.name=elasticsearch_01
@@ -22,7 +25,10 @@ services:
       - elastic
 
   elasticsearch_02:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.2
+    build:
+      context: .
+      args:
+        VERSION: 7.15.2
     container_name: elasticsearch_02
     environment:
       - node.name=elasticsearch_02
@@ -41,7 +47,10 @@ services:
       - elastic
 
   elasticsearch_03:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.2
+    build:
+      context: .
+      args:
+        VERSION: 7.15.2
     container_name: elasticsearch_03
     environment:
       - node.name=elasticsearch_03

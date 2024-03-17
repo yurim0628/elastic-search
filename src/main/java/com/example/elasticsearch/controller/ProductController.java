@@ -2,6 +2,7 @@ package com.example.elasticsearch.controller;
 
 import com.example.elasticsearch.dto.CustomSlice;
 import com.example.elasticsearch.dto.ProductResponse;
+import com.example.elasticsearch.dto.SearchRankResponse;
 import com.example.elasticsearch.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -39,5 +40,10 @@ public class ProductController {
             ) Pageable pageable
     ) {
         return ResponseEntity.ok(productService.findBySearch(keyword, checkInDate, checkOutDate, cursorId, pageable));
+    }
+
+    @GetMapping("/search-rank")
+    public ResponseEntity<List<SearchRankResponse>> getSearchRanking()  {
+        return ResponseEntity.ok(productService.getSearchRanking());
     }
 }

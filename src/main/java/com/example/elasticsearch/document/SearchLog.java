@@ -5,8 +5,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 
 @Getter
-@Document(indexName = "accesslogs")
-public class AccessLog {
+@Document(indexName = "searchlogs")
+public class SearchLog {
 
     @Id
     private String id;

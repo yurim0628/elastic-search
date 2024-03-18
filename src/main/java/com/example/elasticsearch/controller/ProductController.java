@@ -2,7 +2,7 @@ package com.example.elasticsearch.controller;
 
 import com.example.elasticsearch.dto.CustomSlice;
 import com.example.elasticsearch.dto.ProductResponse;
-import com.example.elasticsearch.dto.SearchRankResponse;
+import com.example.elasticsearch.dto.KeywordResponse;
 import com.example.elasticsearch.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -43,7 +43,14 @@ public class ProductController {
     }
 
     @GetMapping("/search-rank")
-    public ResponseEntity<List<SearchRankResponse>> getSearchRanking()  {
+    public ResponseEntity<List<KeywordResponse>> getSearchRanking()  {
         return ResponseEntity.ok(productService.getSearchRanking());
+    }
+
+    @GetMapping("/autocomplete")
+    public ResponseEntity<List<KeywordResponse>> autocomplete(
+            @RequestParam String keyword
+    )  {
+        return ResponseEntity.ok(productService.autocomplete(keyword));
     }
 }

@@ -1,12 +1,13 @@
 package com.example.elasticsearch.repository;
 
-import com.example.elasticsearch.document.AccessLog;
 import com.example.elasticsearch.document.Product;
+import com.example.elasticsearch.document.SearchLog;
 import com.example.elasticsearch.dto.CustomSlice;
-import com.example.elasticsearch.dto.SearchRankResponse;
+import com.example.elasticsearch.dto.KeywordResponse;
 import com.example.elasticsearch.util.DateMapper;
 import lombok.RequiredArgsConstructor;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.MatchPhrasePrefixQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -45,8 +46,11 @@ public class ProductRepository {
 
         BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery()
                 .must(
-                        QueryBuilders.matchQuery(ACCOMMODATION_NAME_NGRAM, keyword)
-                                .analyzer(NGRAM_ANALYZER)
+                        QueryBuilders.multiMatchQuery(keyword)
+                                .field(ACCOMMODATION_NAME_FIELD)
+                                .field(ACCOMMODATION_NAME_NORI_FIELD)
+                                .field(ACCOMMODATION_NAME_NGRAM_FIELD)
+                                .fuzziness(DEFAULT_FUZZINESS)
                 )
                 .must(
                         QueryBuilders.rangeQuery(CHECK_IN_DATE_FIELD)
@@ -87,8 +91,8 @@ public class ProductRepository {
         return new CustomSlice<>(content, hasNext);
     }
 
-    public List<SearchRankResponse> getSearchRanking() {
-        List<SearchRankResponse> searchRankResponseList = new ArrayList<>();
+    public List<KeywordResponse> getSearchRanking() {
+        List<KeywordResponse> keywordResponseList = new ArrayList<>();
 
         long startMillis = DateMapper.toMilliseconds(LocalDateTime.now().truncatedTo(HOURS));
         long endMillis = DateMapper.toMilliseconds(LocalDateTime.now());
@@ -99,14 +103,14 @@ public class ProductRepository {
 
         TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(DEFAULT_AGGREGATION_NAME)
                 .field(KEYWORD_FIELD)
-                .size(DEFAULT_AGGREGATION_SIZE);
+                .size(MAX_AGGREGATION_SIZE);
 
         NativeSearchQuery query = new NativeSearchQueryBuilder()
                 .withQuery(queryBuilder)
                 .addAggregation(aggregationBuilder)
                 .build();;
 
-        SearchHits<AccessLog> search = operations.search(query, AccessLog.class);
+        SearchHits<SearchLog> search = operations.search(query, SearchLog.class);
 
         Terms terms = search.getAggregations() != null ? search.getAggregations().get(DEFAULT_AGGREGATION_NAME) : null;
         if(terms != null) {
@@ -114,11 +118,41 @@ public class ProductRepository {
                 String key = bucket.getKeyAsString();
                 long docCount = bucket.getDocCount();
 
-                SearchRankResponse searchRankResponse = SearchRankResponse.from(key, docCount);
-                searchRankResponseList.add(searchRankResponse);
+                KeywordResponse keywordResponse = KeywordResponse.from(key, docCount);
+                keywordResponseList.add(keywordResponse);
             }
         }
 
-        return searchRankResponseList;
+        return keywordResponseList;
+    }
+
+    public List<KeywordResponse> autocomplete(String prefix) {
+        List<KeywordResponse> keywordResponseList = new ArrayList<>();
+
+        MatchPhrasePrefixQueryBuilder queryBuilder = QueryBuilders.matchPhrasePrefixQuery(KEYWORD_NAME, prefix);
+
+        TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(DEFAULT_AGGREGATION_NAME)
+                .field(KEYWORD_FIELD)
+                .size(MIN_AGGREGATION_SIZE);
+
+        NativeSearchQuery query = new NativeSearchQueryBuilder()
+                .withQuery(queryBuilder)
+                .addAggregation(aggregationBuilder)
+                .build();
+
+        SearchHits<SearchLog> search = operations.search(query, SearchLog.class);
+
+        Terms terms = search.getAggregations() != null ? search.getAggregations().get(DEFAULT_AGGREGATION_NAME) : null;
+        if(terms != null) {
+            for (Terms.Bucket bucket : terms.getBuckets()) {
+                String key = bucket.getKeyAsString();
+                long docCount = bucket.getDocCount();
+
+                KeywordResponse keywordResponse = KeywordResponse.from(key, docCount);
+                keywordResponseList.add(keywordResponse);
+            }
+        }
+
+        return keywordResponseList;
     }
 }

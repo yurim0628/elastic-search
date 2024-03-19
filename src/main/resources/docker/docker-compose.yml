@@ -2,7 +2,7 @@ version: '2.2'
 services:
   elasticsearch_01:
     build:
-      context: .
+      context: ../../java
       args:
         VERSION: 7.15.2
     container_name: elasticsearch_01
@@ -26,7 +26,7 @@ services:
 
   elasticsearch_02:
     build:
-      context: .
+      context: ../../java
       args:
         VERSION: 7.15.2
     container_name: elasticsearch_02
@@ -48,7 +48,7 @@ services:
 
   elasticsearch_03:
     build:
-      context: .
+      context: ../../java
       args:
         VERSION: 7.15.2
     container_name: elasticsearch_03

@@ -27,10 +27,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.example.elasticsearch.constant.ElasticsearchConstants.*;
 import static java.time.temporal.ChronoUnit.HOURS;
+import static org.elasticsearch.common.unit.Fuzziness.ONE;
+import static org.elasticsearch.common.unit.Fuzziness.ZERO;
 
 @Repository
 @RequiredArgsConstructor
@@ -42,17 +43,22 @@ public class ProductRepository {
             String keyword, LocalDate checkInDate, LocalDate checkOutDate,
             Long cursorId, Pageable pageable
     ) {
+        Fuzziness fuzziness = keyword.length() < MIN_KEYWORD_LENGTH ? ZERO : ONE;
+
         long startMillis = DateMapper.toMilliseconds(checkInDate.atStartOfDay());
         long endMillis = DateMapper.toMilliseconds(checkOutDate.atStartOfDay());
 
+        // 1. Elasticsearch 쿼리 작성
         BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery()
+                // 1.1 다중 필드 검색 및 허용 가능한 일치 범위 설정
                 .must(
                         QueryBuilders.multiMatchQuery(keyword)
                                 .field(ACCOMMODATION_NAME_FIELD)
                                 .field(ACCOMMODATION_NAME_NORI_FIELD)
                                 .field(ACCOMMODATION_NAME_NGRAM_FIELD)
-                                .fuzziness(Fuzziness.ONE)
+                                .fuzziness(fuzziness)
                 )
+                // 1.2 체크인 및 체크아웃 날짜 범위 설정
                 .must(
                         QueryBuilders.rangeQuery(CHECK_IN_DATE_FIELD)
                                 .gte(startMillis)
@@ -63,28 +69,34 @@ public class ProductRepository {
                                 .gte(startMillis)
                                 .lte(endMillis)
                 )
+                // 1.3 커서 아이디 기준으로 페이징
                 .must(
-                        QueryBuilders.rangeQuery(CURSOR_ID_FIELD)
+                        QueryBuilders.rangeQuery(ID_FIELD)
                                 .gt(cursorId)
                 );
 
+        // 3. Elasticsearch 쿼리 전송
         NativeSearchQuery query = new NativeSearchQueryBuilder()
                 .withQuery(queryBuilder)
                 .withPageable(
                         PageRequest.of(
                                 pageable.getPageNumber(),
-                                pageable.getPageSize() + ADDITIONAL_PAGE_SIZE,
+                                pageable.getPageSize() + PAGE_SIZE_INCREMENT,
                                 pageable.getSort()
                         )
                 )
+                .withMinScore(MIN_SCORE)
                 .build();
 
         SearchHits<Product> search = operations.search(query, Product.class);
-        List<Product> content = search.stream()
-                .map(SearchHit::getContent)
-                .collect(Collectors.toList());
-        boolean hasNext = search.getTotalHits() > pageable.getPageSize();
 
+        // 4. 검색 결과 필터링
+        List<Product> content = new ArrayList<>();
+        for (SearchHit<Product> searchHit : search.getSearchHits()) {
+            content.add(searchHit.getContent());
+        }
+
+        boolean hasNext = search.getTotalHits() > pageable.getPageSize();
         if (hasNext) {
             content.remove(pageable.getPageSize());
         }

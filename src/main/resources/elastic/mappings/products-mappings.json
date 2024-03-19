@@ -1,6 +1,6 @@
 {
   "properties" : {
-    "keyword": {
+    "accommodation_name": {
       "type" : "text",
       "analyzer": "standard",
       "search_analyzer": "standard",

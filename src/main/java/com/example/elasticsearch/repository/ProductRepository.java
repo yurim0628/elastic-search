@@ -6,6 +6,7 @@ import com.example.elasticsearch.dto.CustomSlice;
 import com.example.elasticsearch.dto.KeywordResponse;
 import com.example.elasticsearch.util.DateMapper;
 import lombok.RequiredArgsConstructor;
+import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MatchPhrasePrefixQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
@@ -50,7 +51,7 @@ public class ProductRepository {
                                 .field(ACCOMMODATION_NAME_FIELD)
                                 .field(ACCOMMODATION_NAME_NORI_FIELD)
                                 .field(ACCOMMODATION_NAME_NGRAM_FIELD)
-                                .fuzziness(DEFAULT_FUZZINESS)
+                                .fuzziness(Fuzziness.ONE)
                 )
                 .must(
                         QueryBuilders.rangeQuery(CHECK_IN_DATE_FIELD)

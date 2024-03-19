@@ -7,7 +7,6 @@ public class ElasticsearchConstants {
     public static final int ADDITIONAL_PAGE_SIZE = 1;
     public static final Long DEFAULT_CURSOR_ID = 0L;
     public static final String DATE_TIME_PATTERN = "uuuu-MM-dd'T'HH:mm:ss.SSS'Z'";
-    public static final int DEFAULT_FUZZINESS = 1;
     public static final String ACCOMMODATION_NAME_FIELD = "accommodation_name";
     public static final String ACCOMMODATION_NAME_NORI_FIELD = "accommodation_name.nori";
     public static final String ACCOMMODATION_NAME_NGRAM_FIELD = "accommodation_name.ngram";

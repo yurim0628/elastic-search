@@ -22,4 +22,6 @@ public class ElasticsearchConstants {
     public static final String TIMESTAMP_FIELD = "@timestamp";
     public static final String AGGREGATION_NAME = "keywords";
     public static final String AGGREGATION_FIELD = "keyword.keyword";
+
+    public static final Long DEFAULT_COUNT = 1L;
 }

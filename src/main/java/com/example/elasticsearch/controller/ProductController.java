@@ -1,5 +1,6 @@
 package com.example.elasticsearch.controller;
 
+import com.example.elasticsearch.dto.AutocompleteResponse;
 import com.example.elasticsearch.dto.CustomSlice;
 import com.example.elasticsearch.dto.ProductResponse;
 import com.example.elasticsearch.dto.KeywordResponse;
@@ -27,7 +28,7 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping
-    public ResponseEntity<CustomSlice<List<ProductResponse>>> findBySearch(
+    public ResponseEntity<CustomSlice<List<ProductResponse>>> findByKeyword(
             @RequestParam String keyword,
             @RequestParam LocalDate checkInDate,
             @RequestParam LocalDate checkOutDate,
@@ -39,7 +40,7 @@ public class ProductController {
                     direction = ASC
             ) Pageable pageable
     ) {
-        return ResponseEntity.ok(productService.findBySearch(keyword, checkInDate, checkOutDate, cursorId, pageable));
+        return ResponseEntity.ok(productService.findByKeyword(keyword, checkInDate, checkOutDate, cursorId, pageable));
     }
 
     @GetMapping("/search-rank")
@@ -48,7 +49,7 @@ public class ProductController {
     }
 
     @GetMapping("/autocomplete")
-    public ResponseEntity<List<KeywordResponse>> autocomplete(
+    public ResponseEntity<AutocompleteResponse> autocomplete(
             @RequestParam String prefix
     )  {
         return ResponseEntity.ok(productService.autocomplete(prefix));

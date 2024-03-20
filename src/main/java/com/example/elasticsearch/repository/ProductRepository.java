@@ -3,12 +3,10 @@ package com.example.elasticsearch.repository;
 import com.example.elasticsearch.document.Product;
 import com.example.elasticsearch.document.SearchLog;
 import com.example.elasticsearch.dto.CustomSlice;
-import com.example.elasticsearch.dto.KeywordResponse;
 import com.example.elasticsearch.util.DateMapper;
 import lombok.RequiredArgsConstructor;
 import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,7 +31,7 @@ public class ProductRepository {
 
     private final ElasticsearchOperations operations;
 
-    public CustomSlice<Product> findBySearch(
+    public CustomSlice<Product> findByKeyword(
             String keyword, LocalDate checkInDate, LocalDate checkOutDate,
             Long cursorId, Pageable pageable
     ) {
@@ -120,9 +118,7 @@ public class ProductRepository {
         return operations.search(query, SearchLog.class);
     }
 
-    public List<KeywordResponse> autocomplete(String prefix) {
-        List<KeywordResponse> keywordResponseList = new ArrayList<>();
-
+    public SearchHits<SearchLog> autocomplete(String prefix) {
         MatchPhrasePrefixQueryBuilder queryBuilder = QueryBuilders.matchPhrasePrefixQuery(KEYWORD_FIELD, prefix);
 
         TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(AGGREGATION_NAME)
@@ -135,19 +131,24 @@ public class ProductRepository {
                 .addAggregation(aggregationBuilder)
                 .build();
 
-        SearchHits<SearchLog> search = operations.search(query, SearchLog.class);
+        return operations.search(query, SearchLog.class);
+    }
 
-        Terms terms = search.getAggregations().get(AGGREGATION_NAME);
-        if(terms != null) {
-            for (Terms.Bucket bucket : terms.getBuckets()) {
-                String key = bucket.getKeyAsString();
-                long docCount = bucket.getDocCount();
+    public SearchHits<Product> findByPrefix(String prefix) {
+        MultiMatchQueryBuilder queryBuilder = QueryBuilders.multiMatchQuery(prefix)
+                .field(ACCOMMODATION_NAME_FIELD)
+                .field(ACCOMMODATION_NAME_NORI_FIELD);
 
-                KeywordResponse keywordResponse = KeywordResponse.from(key, docCount);
-                keywordResponseList.add(keywordResponse);
-            }
-        }
+        NativeSearchQuery query = new NativeSearchQueryBuilder()
+                .withQuery(queryBuilder)
+                .withPageable(
+                        PageRequest.of(
+                                DEFAULT_PAGE,
+                                DEFAULT_PAGE_SIZE
+                        )
+                )
+                .build();
 
-        return keywordResponseList;
+        return operations.search(query, Product.class);
     }
 }

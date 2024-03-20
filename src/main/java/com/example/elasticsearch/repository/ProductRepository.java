@@ -6,11 +6,7 @@ import com.example.elasticsearch.dto.CustomSlice;
 import com.example.elasticsearch.dto.KeywordResponse;
 import com.example.elasticsearch.util.DateMapper;
 import lombok.RequiredArgsConstructor;
-import org.elasticsearch.common.unit.Fuzziness;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.MatchPhrasePrefixQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.*;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
@@ -30,8 +26,6 @@ import java.util.List;
 
 import static com.example.elasticsearch.constant.ElasticsearchConstants.*;
 import static java.time.temporal.ChronoUnit.HOURS;
-import static org.elasticsearch.common.unit.Fuzziness.ONE;
-import static org.elasticsearch.common.unit.Fuzziness.ZERO;
 
 @Repository
 @RequiredArgsConstructor
@@ -43,20 +37,17 @@ public class ProductRepository {
             String keyword, LocalDate checkInDate, LocalDate checkOutDate,
             Long cursorId, Pageable pageable
     ) {
-        Fuzziness fuzziness = keyword.length() < MIN_KEYWORD_LENGTH ? ZERO : ONE;
-
         long startMillis = DateMapper.toMilliseconds(checkInDate.atStartOfDay());
         long endMillis = DateMapper.toMilliseconds(checkOutDate.atStartOfDay());
 
         // 1. Elasticsearch 쿼리 작성
         BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery()
-                // 1.1 다중 필드 검색 및 허용 가능한 일치 범위 설정
+                // 1.1 다중 필드 검색
                 .must(
                         QueryBuilders.multiMatchQuery(keyword)
                                 .field(ACCOMMODATION_NAME_FIELD)
                                 .field(ACCOMMODATION_NAME_NORI_FIELD)
                                 .field(ACCOMMODATION_NAME_NGRAM_FIELD)
-                                .fuzziness(fuzziness)
                 )
                 // 1.2 체크인 및 체크아웃 날짜 범위 설정
                 .must(
@@ -75,7 +66,7 @@ public class ProductRepository {
                                 .gt(cursorId)
                 );
 
-        // 3. Elasticsearch 쿼리 전송
+        // 2. Elasticsearch 쿼리 전송
         NativeSearchQuery query = new NativeSearchQueryBuilder()
                 .withQuery(queryBuilder)
                 .withPageable(
@@ -85,12 +76,11 @@ public class ProductRepository {
                                 pageable.getSort()
                         )
                 )
-                .withMinScore(MIN_SCORE)
                 .build();
 
         SearchHits<Product> search = operations.search(query, Product.class);
 
-        // 4. 검색 결과 필터링
+        // 3. 검색 결과 필터링
         List<Product> content = new ArrayList<>();
         for (SearchHit<Product> searchHit : search.getSearchHits()) {
             content.add(searchHit.getContent());
@@ -104,49 +94,41 @@ public class ProductRepository {
         return new CustomSlice<>(content, hasNext);
     }
 
-    public List<KeywordResponse> getSearchRanking() {
-        List<KeywordResponse> keywordResponseList = new ArrayList<>();
-
+    public SearchHits<SearchLog> getSearchRanking() {
         long startMillis = DateMapper.toMilliseconds(LocalDateTime.now().truncatedTo(HOURS));
         long endMillis = DateMapper.toMilliseconds(LocalDateTime.now());
 
-        QueryBuilder queryBuilder = QueryBuilders.rangeQuery(TIMESTAMP_FIELD)
+        // 1. Elasticsearch 쿼리 작성
+        // 1.1 NOW_HOUR:00 ~ NOW 까지
+        RangeQueryBuilder queryBuilder = QueryBuilders.rangeQuery(TIMESTAMP_FIELD)
                 .gte(startMillis)
                 .lte(endMillis);
 
-        TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(DEFAULT_AGGREGATION_NAME)
-                .field(KEYWORD_FIELD)
-                .size(MAX_AGGREGATION_SIZE);
+        // 1.2 집계 대상 검색어 설정
+        TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(AGGREGATION_NAME)
+                .field(AGGREGATION_FIELD)
+                .minDocCount(MIN_DOCUMENT_SIZE)
+                .size(DEFAULT_TERMS_SIZE);
 
+        // 2. Elasticsearch 쿼리 전송
         NativeSearchQuery query = new NativeSearchQueryBuilder()
                 .withQuery(queryBuilder)
                 .addAggregation(aggregationBuilder)
-                .build();;
+                .build();
 
-        SearchHits<SearchLog> search = operations.search(query, SearchLog.class);
-
-        Terms terms = search.getAggregations() != null ? search.getAggregations().get(DEFAULT_AGGREGATION_NAME) : null;
-        if(terms != null) {
-            for (Terms.Bucket bucket : terms.getBuckets()) {
-                String key = bucket.getKeyAsString();
-                long docCount = bucket.getDocCount();
-
-                KeywordResponse keywordResponse = KeywordResponse.from(key, docCount);
-                keywordResponseList.add(keywordResponse);
-            }
-        }
-
-        return keywordResponseList;
+        // 3. 집계 결과 처리
+        return operations.search(query, SearchLog.class);
     }
 
     public List<KeywordResponse> autocomplete(String prefix) {
         List<KeywordResponse> keywordResponseList = new ArrayList<>();
 
-        MatchPhrasePrefixQueryBuilder queryBuilder = QueryBuilders.matchPhrasePrefixQuery(KEYWORD_NAME, prefix);
+        MatchPhrasePrefixQueryBuilder queryBuilder = QueryBuilders.matchPhrasePrefixQuery(KEYWORD_FIELD, prefix);
 
-        TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(DEFAULT_AGGREGATION_NAME)
-                .field(KEYWORD_FIELD)
-                .size(MIN_AGGREGATION_SIZE);
+        TermsAggregationBuilder aggregationBuilder = AggregationBuilders.terms(AGGREGATION_NAME)
+                .field(AGGREGATION_FIELD)
+                .minDocCount(MIN_DOCUMENT_SIZE)
+                .size(DEFAULT_TERMS_SIZE);
 
         NativeSearchQuery query = new NativeSearchQueryBuilder()
                 .withQuery(queryBuilder)
@@ -155,7 +137,7 @@ public class ProductRepository {
 
         SearchHits<SearchLog> search = operations.search(query, SearchLog.class);
 
-        Terms terms = search.getAggregations() != null ? search.getAggregations().get(DEFAULT_AGGREGATION_NAME) : null;
+        Terms terms = search.getAggregations().get(AGGREGATION_NAME);
         if(terms != null) {
             for (Terms.Bucket bucket : terms.getBuckets()) {
                 String key = bucket.getKeyAsString();

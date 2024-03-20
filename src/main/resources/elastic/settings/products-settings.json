@@ -1,5 +1,12 @@
 {
   "analysis": {
+    "char_filter": {
+      "blank_filter": {
+        "type": "pattern_replace",
+        "pattern": "[\\p{Blank}]",
+        "replacement": ""
+      }
+    },
     "tokenizer": {
       "custom_nori_tokenizer": {
         "type": "nori_tokenizer",
@@ -37,6 +44,9 @@
       "ngram_analyzer": {
         "type": "custom",
         "tokenizer": "standard",
+        "char_filter": [
+          "blank_filter"
+        ],
         "filter": [
           "lowercase",
           "ngram_filter"

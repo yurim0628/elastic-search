@@ -49,8 +49,8 @@ public class ProductController {
 
     @GetMapping("/autocomplete")
     public ResponseEntity<List<KeywordResponse>> autocomplete(
-            @RequestParam String keyword
+            @RequestParam String prefix
     )  {
-        return ResponseEntity.ok(productService.autocomplete(keyword));
+        return ResponseEntity.ok(productService.autocomplete(prefix));
     }
 }
